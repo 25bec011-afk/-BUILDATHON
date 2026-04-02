@@ -1,81 +1,98 @@
-import pygame
+import streamlit as st
 import random
 
-pygame.init()
+st.set_page_config(page_title="🎮 Game Hub", layout="centered")
 
-# Screen
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Python Shooter Game")
+st.title("🎮 Play Store Game Hub")
 
-# Colors
-WHITE = (255,255,255)
-RED = (255,0,0)
-GREEN = (0,255,0)
-BLACK = (0,0,0)
+# Score system
+if "score" not in st.session_state:
+    st.session_state.score = 0
 
-# Player
-player = pygame.Rect(375, 500, 50, 50)
-player_speed = 5
+tab1, tab2, tab3, tab4 = st.tabs(["🎯 Guess", "✊ RPS", "🔤 Word", "🤖 AI TicTacToe"])
 
-# Bullets
-bullets = []
+# ------------------ GUESS GAME ------------------
+with tab1:
+    st.subheader("🎯 Guess the Number")
 
-# Enemies
-enemies = []
-for i in range(5):
-    enemy = pygame.Rect(random.randint(0,750), random.randint(0,200), 50, 50)
-    enemies.append(enemy)
+    if "number" not in st.session_state:
+        st.session_state.number = random.randint(1, 10)
 
-# Game loop
-running = True
-clock = pygame.time.Clock()
+    guess = st.number_input("Enter number", 1, 10)
 
-while running:
-    screen.fill(BLACK)
+    if st.button("Check Guess"):
+        if guess == st.session_state.number:
+            st.success("Correct 🎉")
+            st.session_state.score += 1
+        else:
+            st.error("Wrong ❌")
 
-    # Events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+# ------------------ RPS ------------------
+with tab2:
+    st.subheader("✊ Rock Paper Scissors")
 
-        # Shoot
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            bullet = pygame.Rect(player.x+20, player.y, 10, 20)
-            bullets.append(bullet)
+    choices = ["Rock", "Paper", "Scissors"]
+    user = st.selectbox("Choose", choices)
 
-    # Movement
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_a]:
-        player.x -= player_speed
-    if keys[pygame.K_d]:
-        player.x += player_speed
-    if keys[pygame.K_w]:
-        player.y -= player_speed
-    if keys[pygame.K_s]:
-        player.y += player_speed
+    if st.button("Play RPS"):
+        comp = random.choice(choices)
+        st.write("Computer:", comp)
 
-    # Draw player
-    pygame.draw.rect(screen, GREEN, player)
+        if user == comp:
+            st.info("Draw 😐")
+        elif (user=="Rock" and comp=="Scissors") or \
+             (user=="Paper" and comp=="Rock") or \
+             (user=="Scissors" and comp=="Paper"):
+            st.success("You Win 🎉")
+            st.session_state.score += 1
+        else:
+            st.error("You Lose 😢")
 
-    # Bullets
-    for bullet in bullets:
-        bullet.y -= 10
-        pygame.draw.rect(screen, WHITE, bullet)
+# ------------------ WORD GAME ------------------
+with tab3:
+    st.subheader("🔤 Word Scramble")
 
-    # Enemies
-    for enemy in enemies:
-        pygame.draw.rect(screen, RED, enemy)
+    words = ["python", "streamlit", "hackathon"]
+    
+    if "word" not in st.session_state:
+        st.session_state.word = random.choice(words)
 
-    # Collision
-    for bullet in bullets:
-        for enemy in enemies:
-            if bullet.colliderect(enemy):
-                enemies.remove(enemy)
-                if bullet in bullets:
-                    bullets.remove(bullet)
+    scrambled = ''.join(random.sample(st.session_state.word, len(st.session_state.word)))
+    st.write("Scrambled:", scrambled)
 
-    pygame.display.update()
-    clock.tick(60)
+    guess_word = st.text_input("Your guess")
 
-pygame.quit()
+    if st.button("Check Word"):
+        if guess_word == st.session_state.word:
+            st.success("Correct 🎉")
+            st.session_state.score += 1
+        else:
+            st.error("Wrong ❌")
+
+# ------------------ AI TIC TAC TOE ------------------
+with tab4:
+    st.subheader("🤖 AI Tic Tac Toe")
+
+    if "board" not in st.session_state:
+        st.session_state.board = [""] * 9
+
+    def ai_move():
+        empty = [i for i,v in enumerate(st.session_state.board) if v==""]
+        if empty:
+            move = random.choice(empty)
+            st.session_state.board[move] = "O"
+
+    cols = st.columns(3)
+
+    for i in range(9):
+        if cols[i%3].button(st.session_state.board[i] or " ", key=i):
+            if st.session_state.board[i] == "":
+                st.session_state.board[i] = "X"
+                ai_move()
+
+    if st.button("Reset Board"):
+        st.session_state.board = [""] * 9
+
+# ------------------ SCORE ------------------
+st.markdown("---")
+st.subheader(f"🏆 Total Score: {st.session_state.score}")
