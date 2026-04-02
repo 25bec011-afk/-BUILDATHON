@@ -1,12 +1,61 @@
 import streamlit as st
-import time
 
-st.title("⏱️ Study Timer")
+st.title("🎮 3D Shooter Game")
 
-seconds = st.number_input("Enter time (seconds)", min_value=1)
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+</head>
+<body>
+<canvas id="game"></canvas>
 
-if st.button("Start Timer"):
-    for i in range(int(seconds), 0, -1):
-        st.write(f"Time left: {i} sec")
-        time.sleep(1)
-    st.success("Time's up! 🎉")
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("game")});
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+// Player (cube)
+const geometry = new THREE.BoxGeometry();
+const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+const player = new THREE.Mesh(geometry, material);
+scene.add(player);
+
+// Enemy
+const enemyGeo = new THREE.BoxGeometry();
+const enemyMat = new THREE.MeshBasicMaterial({color: 0xff0000});
+const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+enemy.position.x = 3;
+scene.add(enemy);
+
+camera.position.z = 5;
+
+// Movement
+document.addEventListener("keydown", (e)=>{
+    if(e.key === "ArrowLeft") player.position.x -= 0.2;
+    if(e.key === "ArrowRight") player.position.x += 0.2;
+});
+
+// Shooting
+document.addEventListener("click", ()=>{
+    if(Math.abs(player.position.x - enemy.position.x) < 1){
+        enemy.position.x = Math.random()*6 - 3;
+        alert("💥 Hit!");
+    }
+});
+
+function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+}
+animate();
+</script>
+
+</body>
+</html>
+"""
+
+st.components.v1.html(html_code, height=600)
