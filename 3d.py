@@ -1,120 +1,81 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>FPS Game</title>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/PointerLockControls.js"></script>
-<style>
-body { margin:0; overflow:hidden; background:black; }
-#start {
-    position:absolute;
-    top:40%;
-    width:100%;
-    text-align:center;
-    color:white;
-    font-size:20px;
-    cursor:pointer;
-}
-</style>
-</head>
-<body>
+import pygame
+import random
 
-<div id="start">CLICK TO START FPS</div>
+pygame.init()
 
-<script>
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x202020);
+# Screen
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Python Shooter Game")
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+# Colors
+WHITE = (255,255,255)
+RED = (255,0,0)
+GREEN = (0,255,0)
+BLACK = (0,0,0)
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+# Player
+player = pygame.Rect(375, 500, 50, 50)
+player_speed = 5
 
-// LIGHT
-const light = new THREE.HemisphereLight(0xffffff, 0x444444);
-scene.add(light);
+# Bullets
+bullets = []
 
-// FLOOR
-const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(100,100),
-    new THREE.MeshStandardMaterial({color:0x333333})
-);
-floor.rotation.x = -Math.PI/2;
-scene.add(floor);
+# Enemies
+enemies = []
+for i in range(5):
+    enemy = pygame.Rect(random.randint(0,750), random.randint(0,200), 50, 50)
+    enemies.append(enemy)
 
-// CONTROLS
-const controls = new THREE.PointerLockControls(camera, document.body);
+# Game loop
+running = True
+clock = pygame.time.Clock()
 
-document.getElementById("start").onclick = () => {
-    controls.lock();
-};
+while running:
+    screen.fill(BLACK)
 
-// MOVEMENT
-let move = {w:false,s:false,a:false,d:false};
+    # Events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-document.addEventListener("keydown", e=>{
-    if(e.code==="KeyW") move.w=true;
-    if(e.code==="KeyS") move.s=true;
-    if(e.code==="KeyA") move.a=true;
-    if(e.code==="KeyD") move.d=true;
-});
+        # Shoot
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            bullet = pygame.Rect(player.x+20, player.y, 10, 20)
+            bullets.append(bullet)
 
-document.addEventListener("keyup", e=>{
-    if(e.code==="KeyW") move.w=false;
-    if(e.code==="KeyS") move.s=false;
-    if(e.code==="KeyA") move.a=false;
-    if(e.code==="KeyD") move.d=false;
-});
+    # Movement
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_a]:
+        player.x -= player_speed
+    if keys[pygame.K_d]:
+        player.x += player_speed
+    if keys[pygame.K_w]:
+        player.y -= player_speed
+    if keys[pygame.K_s]:
+        player.y += player_speed
 
-// ENEMIES
-let enemies = [];
+    # Draw player
+    pygame.draw.rect(screen, GREEN, player)
 
-function createEnemy(){
-    const e = new THREE.Mesh(
-        new THREE.BoxGeometry(),
-        new THREE.MeshStandardMaterial({color:0xff0000})
-    );
-    e.position.set(Math.random()*20-10,1,Math.random()*-20);
-    scene.add(e);
-    enemies.push(e);
-}
+    # Bullets
+    for bullet in bullets:
+        bullet.y -= 10
+        pygame.draw.rect(screen, WHITE, bullet)
 
-for(let i=0;i<5;i++) createEnemy();
+    # Enemies
+    for enemy in enemies:
+        pygame.draw.rect(screen, RED, enemy)
 
-// SHOOT
-const raycaster = new THREE.Raycaster();
+    # Collision
+    for bullet in bullets:
+        for enemy in enemies:
+            if bullet.colliderect(enemy):
+                enemies.remove(enemy)
+                if bullet in bullets:
+                    bullets.remove(bullet)
 
-document.addEventListener("click", ()=>{
-    if(!controls.isLocked) return;
+    pygame.display.update()
+    clock.tick(60)
 
-    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-    const hits = raycaster.intersectObjects(enemies);
-
-    if(hits.length > 0){
-        let hit = hits[0].object;
-        scene.remove(hit);
-        enemies = enemies.filter(e => e !== hit);
-        createEnemy();
-    }
-});
-
-// LOOP
-function animate(){
-    requestAnimationFrame(animate);
-
-    let speed = 0.2;
-
-    if(move.w) controls.moveForward(speed);
-    if(move.s) controls.moveForward(-speed);
-    if(move.a) controls.moveRight(-speed);
-    if(move.d) controls.moveRight(speed);
-
-    renderer.render(scene, camera);
-}
-
-animate();
-</script>
-
-</body>
-</html>
+pygame.quit()
