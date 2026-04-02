@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.title("🎮 Advanced 3D FPS Shooter")
+st.title("🎮 3D FPS Shooter (Working)")
 
 html_code = """
 <!DOCTYPE html>
@@ -8,7 +8,7 @@ html_code = """
 <head>
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 <style>
-body { margin: 0; overflow: hidden; }
+body { margin: 0; overflow: hidden; background: black; }
 #crosshair {
     position: absolute;
     top: 50%; left: 50%;
@@ -24,67 +24,86 @@ body { margin: 0; overflow: hidden; }
 <canvas id="game"></canvas>
 
 <script>
+const canvas = document.getElementById("game");
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, 800/500, 0.1, 1000);
 
-const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("game")});
+const renderer = new THREE.WebGLRenderer({canvas: canvas});
 renderer.setSize(800, 500);
 
-// Floor
+// LIGHT
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(0,10,5);
+scene.add(light);
+
+// FLOOR
 const floorGeo = new THREE.PlaneGeometry(20,20);
-const floorMat = new THREE.MeshBasicMaterial({color: 0x444444, side: THREE.DoubleSide});
+const floorMat = new THREE.MeshStandardMaterial({color: 0x333333});
 const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = Math.PI/2;
+floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-// Player position
+// PLAYER
 let player = {x:0, z:5};
 
-// Enemy
+// ENEMY
 const enemyGeo = new THREE.BoxGeometry();
-const enemyMat = new THREE.MeshBasicMaterial({color: 0xff0000});
+const enemyMat = new THREE.MeshStandardMaterial({color: 0xff0000});
 const enemy = new THREE.Mesh(enemyGeo, enemyMat);
 enemy.position.set(0,1,-5);
 scene.add(enemy);
 
-// Camera
+// CAMERA
 camera.position.y = 2;
 camera.position.z = player.z;
 
-// Movement
+// KEY CONTROLS
+let keys = {};
+
 document.addEventListener("keydown", (e)=>{
-    if(e.key === "w") player.z -= 0.3;
-    if(e.key === "s") player.z += 0.3;
-    if(e.key === "a") player.x -= 0.3;
-    if(e.key === "d") player.x += 0.3;
+    keys[e.key.toLowerCase()] = true;
 });
 
-// Shooting
+document.addEventListener("keyup", (e)=>{
+    keys[e.key.toLowerCase()] = false;
+});
+
+// SHOOTING
 document.addEventListener("click", ()=>{
     let dx = player.x - enemy.position.x;
     let dz = player.z - enemy.position.z;
 
-    if(Math.sqrt(dx*dx + dz*dz) < 2){
-        alert("💥 Enemy Hit!");
+    let dist = Math.sqrt(dx*dx + dz*dz);
+
+    if(dist < 2){
+        alert("💥 HIT!");
         enemy.position.x = (Math.random()*10)-5;
-        enemy.position.z = (Math.random()*-10);
+        enemy.position.z = -Math.random()*10;
     }
 });
 
-// Animate
+// GAME LOOP
 function animate(){
     requestAnimationFrame(animate);
 
-    // Move enemy slowly
-    enemy.position.x += Math.sin(Date.now()*0.001)*0.01;
+    // MOVEMENT
+    if(keys["w"]) player.z -= 0.1;
+    if(keys["s"]) player.z += 0.1;
+    if(keys["a"]) player.x -= 0.1;
+    if(keys["d"]) player.x += 0.1;
 
-    // Update camera
+    // ENEMY MOVEMENT
+    enemy.position.x += Math.sin(Date.now()*0.002) * 0.02;
+
+    // CAMERA FOLLOW
     camera.position.x = player.x;
     camera.position.z = player.z;
     camera.lookAt(enemy.position);
 
     renderer.render(scene, camera);
 }
+
 animate();
 </script>
 
