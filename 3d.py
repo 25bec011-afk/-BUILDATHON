@@ -1,145 +1,121 @@
 import streamlit as st
 
-st.title("🎮 Large 3D TPS Game Engine")
+st.title("🎮 Real FPS Shooter")
 
 html_code = """
 <!DOCTYPE html>
 <html>
 <head>
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/PointerLockControls.js"></script>
 <style>
 body { margin:0; overflow:hidden; background:black; }
+#info {
+    position:absolute;
+    top:40%;
+    width:100%;
+    text-align:center;
+    color:white;
+    font-size:20px;
+}
 </style>
 </head>
 <body>
 
+<div id="info">Click to start FPS mode</div>
 <canvas id="game"></canvas>
 
 <script>
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x202020);
 
-// ================== CORE ENGINE ==================
-let scene, camera, renderer;
-let player, enemies = [];
-let keys = {};
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
-init();
-animate();
+const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("game")});
+renderer.setSize(window.innerWidth, 500);
 
-// ================== INIT ==================
-function init(){
+// LIGHT
+const light = new THREE.HemisphereLight(0xffffff, 0x444444);
+scene.add(light);
 
-    scene = new THREE.Scene();
+// FLOOR
+const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(100,100),
+    new THREE.MeshStandardMaterial({color:0x333333})
+);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
 
-    camera = new THREE.PerspectiveCamera(75, 800/500, 0.1, 1000);
+// PLAYER CONTROLS (REAL FPS)
+const controls = new THREE.PointerLockControls(camera, document.body);
 
-    renderer = new THREE.WebGLRenderer({canvas: document.getElementById("game")});
-    renderer.setSize(800, 500);
+document.getElementById("info").addEventListener("click", ()=>{
+    controls.lock();
+});
 
-    // LIGHT
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(10,10,10);
-    scene.add(light);
+// MOVEMENT
+let move = {forward:false, back:false, left:false, right:false};
 
-    createMap();
-    createPlayer();
-    spawnEnemies();
+document.addEventListener("keydown", e=>{
+    if(e.code==="KeyW") move.forward=true;
+    if(e.code==="KeyS") move.back=true;
+    if(e.code==="KeyA") move.left=true;
+    if(e.code==="KeyD") move.right=true;
+});
 
-    setupControls();
+document.addEventListener("keyup", e=>{
+    if(e.code==="KeyW") move.forward=false;
+    if(e.code==="KeyS") move.back=false;
+    if(e.code==="KeyA") move.left=false;
+    if(e.code==="KeyD") move.right=false;
+});
+
+// ENEMIES
+let enemies = [];
+
+function createEnemy(){
+    const e = new THREE.Mesh(
+        new THREE.BoxGeometry(),
+        new THREE.MeshStandardMaterial({color:0xff0000})
+    );
+    e.position.set(Math.random()*20-10,1,Math.random()*-20);
+    scene.add(e);
+    enemies.push(e);
 }
 
-// ================== MAP ==================
-function createMap(){
-    const groundGeo = new THREE.PlaneGeometry(100,100);
-    const groundMat = new THREE.MeshStandardMaterial({color: 0x222222});
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI/2;
-    scene.add(ground);
-}
+for(let i=0;i<5;i++) createEnemy();
 
-// ================== PLAYER ==================
-function createPlayer(){
-    const geo = new THREE.BoxGeometry(1,2,1);
-    const mat = new THREE.MeshStandardMaterial({color: 0x00ff00});
-    player = new THREE.Mesh(geo, mat);
-    player.position.y = 1;
-    scene.add(player);
-}
+// SHOOT (REAL AIM USING RAYCAST)
+const raycaster = new THREE.Raycaster();
 
-// ================== ENEMIES ==================
-function spawnEnemies(){
-    for(let i=0;i<5;i++){
-        const geo = new THREE.BoxGeometry(1,2,1);
-        const mat = new THREE.MeshStandardMaterial({color: 0xff0000});
-        const enemy = new THREE.Mesh(geo, mat);
-        enemy.position.set(Math.random()*20-10,1,Math.random()*-20);
-        scene.add(enemy);
-        enemies.push(enemy);
+document.addEventListener("click", ()=>{
+    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+
+    const hits = raycaster.intersectObjects(enemies);
+
+    if(hits.length > 0){
+        let hit = hits[0].object;
+        scene.remove(hit);
+        enemies = enemies.filter(e => e !== hit);
+        createEnemy();
     }
-}
+});
 
-// ================== CONTROLS ==================
-function setupControls(){
-    document.addEventListener("keydown", e=> keys[e.key.toLowerCase()] = true);
-    document.addEventListener("keyup", e=> keys[e.key.toLowerCase()] = false);
-
-    document.addEventListener("click", shoot);
-}
-
-// ================== SHOOT ==================
-function shoot(){
-    enemies.forEach((enemy, index)=>{
-        let dist = player.position.distanceTo(enemy.position);
-
-        if(dist < 5){
-            scene.remove(enemy);
-            enemies.splice(index,1);
-            spawnEnemies(); // respawn
-        }
-    });
-}
-
-// ================== PLAYER MOVEMENT ==================
-function updatePlayer(){
-    let speed = 0.15;
-
-    if(keys["w"]) player.position.z -= speed;
-    if(keys["s"]) player.position.z += speed;
-    if(keys["a"]) player.position.x -= speed;
-    if(keys["d"]) player.position.x += speed;
-}
-
-// ================== ENEMY AI ==================
-function updateEnemies(){
-    enemies.forEach(enemy=>{
-        // move toward player
-        let dx = player.position.x - enemy.position.x;
-        let dz = player.position.z - enemy.position.z;
-
-        enemy.position.x += dx * 0.005;
-        enemy.position.z += dz * 0.005;
-    });
-}
-
-// ================== CAMERA ==================
-function updateCamera(){
-    camera.position.x = player.position.x;
-    camera.position.y = player.position.y + 5;
-    camera.position.z = player.position.z + 8;
-
-    camera.lookAt(player.position);
-}
-
-// ================== GAME LOOP ==================
+// GAME LOOP
 function animate(){
     requestAnimationFrame(animate);
 
-    updatePlayer();
-    updateEnemies();
-    updateCamera();
+    let speed = 0.1;
+
+    if(move.forward) controls.moveForward(speed);
+    if(move.back) controls.moveForward(-speed);
+    if(move.left) controls.moveRight(-speed);
+    if(move.right) controls.moveRight(speed);
 
     renderer.render(scene, camera);
 }
 
+animate();
 </script>
 
 </body>
